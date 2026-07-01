@@ -1,0 +1,19 @@
+# ---- core (required) ----
+numpy>=1.24.0
+scipy>=1.11.0
+pandas>=2.0.0
+pyyaml>=6.0
+
+# ---- testing ----
+pytest>=7.4.0
+
+# ---- LLM generation (optional: ProtGPT2 full model) ----
+# Without these, the pipeline automatically uses the dependency-free
+# ProtGPT2Lite fallback, so the pipeline still runs end-to-end.
+# Install for real transformer-based generation:
+#   pip install torch transformers
+torch>=2.0.0
+transformers>=4.30.0
+
+# ---- bioinformatics (optional) ----
+biopython>=1.81

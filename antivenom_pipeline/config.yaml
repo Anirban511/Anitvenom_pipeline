@@ -1,0 +1,279 @@
+# ANTIVENOM PROTEIN DESIGN PIPELINE - CONFIGURATION
+# YAML Configuration File
+
+# ====================================
+# PIPELINE SETTINGS
+# ====================================
+pipeline:
+  # Toxin target
+  pdb_id: "3FTX"  # Default: Three-finger toxin
+  
+  # Generation parameters
+  num_sequences: 5  # Sequences to generate per method
+  sequence_length_range: [80, 150]  # Min-max amino acids
+  
+  # Output directory
+  output_dir: "./results"
+  
+  # Logging
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+
+# ====================================
+# LLM SETTINGS (Claude)
+# ====================================
+llm:
+  # Model configuration
+  model: "claude-3-5-sonnet-20241022"
+  max_tokens: 1500
+  temperature: 0.7  # 0.0-1.0 (creativity)
+  
+  # API configuration
+  api_key: "${ANTHROPIC_API_KEY}"  # From environment
+  api_timeout: 30  # seconds
+  
+  # Generation constraints
+  constraints:
+    - "80-150 amino acids"
+    - "Include cysteine pairs for disulfide bonds"
+    - "Hydrophobic-hydrophilic balance"
+    - "Complementary to toxin binding interface"
+
+# ====================================
+# PROTEINMPNN SETTINGS
+# ====================================
+proteinmpnn:
+  # Model weights
+  weights_dir: "./protein_mpnn_weights"
+  
+  # Generation parameters
+  temperature: 0.1  # Lower = more deterministic
+  num_seq_per_target: 5  # Sequences per PDB
+  
+  # Interface specification
+  binding_interface:
+    enabled: false
+    chain: "A"
+    residue_range: null  # Auto-detect if null
+    
+  # Advanced options
+  use_pssm: false  # Position-specific scoring
+  num_workers: 4
+
+# ====================================
+# STRUCTURE PREDICTION
+# ====================================
+alphafold:
+  # Model selection
+  model_name: "esm_fold"  # Options: esm_fold, omegafold, alphafold2
+  
+  # ESMFold settings (fastest)
+  esm_fold:
+    model_size: "8m"  # 8m (fast) or 35m (accurate)
+    chunk_size: 128
+    use_fp16: true  # Mixed precision for speed
+  
+  # OmegaFold settings (good balance)
+  omegafold:
+    model: "omegafold_esmif1"
+    subbatch_size: 128
+  
+  # AlphaFold2 settings (accurate, slow)
+  alphafold2:
+    preset: "monomer_ptm"  # monomer or monomer_ptm
+    max_msa_depth: 512
+    num_models: 5  # Number of ensemble models
+  
+  # Compute settings
+  use_gpu: true
+  device: "cuda:0"  # GPU device
+  max_batch_size: 10
+  
+  # Confidence thresholds
+  plddt_thresholds:
+    high: 90
+    medium: 70
+    low: 50
+
+# ====================================
+# DOCKING CONFIGURATION
+# ====================================
+docking:
+  # Docking method
+  method: "vina"  # vina, dock6, rosetta, or synthetic
+  
+  # AutoDock Vina parameters
+  vina:
+    exhaustiveness: 8  # 1-32 (higher = slower but more thorough)
+    num_modes: 9  # Number of poses to generate
+    energy_range: 3  # kcal/mol
+    cpu: 4  # CPU cores to use
+  
+  # Search space (around toxin binding site)
+  search_box:
+    center_offset: 0  # Auto-center on interface
+    size_x: 20
+    size_y: 20
+    size_z: 20
+  
+  # Binding thresholds
+  energy_threshold: -6.0  # kcal/mol (< is favorable)
+  rmsd_threshold: 2.0  # Angstroms
+
+# ====================================
+# ANALYSIS SETTINGS
+# ====================================
+analysis:
+  # Scoring weights
+  scoring_weights:
+    structure: 0.35  # pLDDT, secondary structure
+    stability: 0.35  # Cysteine, charge, hydrophobicity
+    dockability: 0.30  # Binding affinity, interactions
+  
+  # Metrics computation
+  compute_metrics:
+    - "avg_plddt"
+    - "cysteine_bonding"
+    - "charge_distribution"
+    - "hydrophobicity"
+    - "binding_energy"
+    - "hbond_count"
+  
+  # Report generation
+  generate_report: true
+  report_format: "json"  # json, csv, or both
+  
+  # Visualization
+  generate_plots: true
+  plot_types:
+    - "plddt_distribution"
+    - "composite_score_comparison"
+    - "binding_energy_ranking"
+    - "method_comparison"
+
+# ====================================
+# DATABASE SETTINGS
+# ====================================
+pdb:
+  # PDB server
+  server: "https://files.rcsb.org"
+  format: "pdb"  # pdb or cif
+  
+  # Caching
+  cache_dir: "./data/pdb"
+  cache_enabled: true
+  cache_ttl: 604800  # 7 days in seconds
+
+# ====================================
+# ADVANCED PARAMETERS
+# ====================================
+advanced:
+  # Parallel processing
+  num_processes: 4
+  batch_processing: true
+  
+  # Random seed for reproducibility
+  random_seed: 42
+  
+  # Performance tuning
+  memory_limit_gb: 8
+  timeout_seconds: 3600  # 1 hour max per step
+  
+  # Validation
+  validate_sequences: true
+  validate_pdb: true
+  check_disulfide_geometry: true
+  
+  # Intermediate outputs
+  save_intermediate: true
+  save_pdb_predictions: true
+  save_alignment_data: true
+
+# ====================================
+# TOXIN-SPECIFIC PARAMETERS
+# ====================================
+toxins:
+  "3FTX":
+    name: "Three-finger toxin"
+    type: "neurotoxin"
+    binding_target: "acetylcholine receptor"
+    chain: "A"
+    binding_residues: [10, 50]  # Approximate
+    
+  "1BTX":
+    name: "Cobra neurotoxin"
+    type: "3FTx"
+    binding_target: "nicotinic acetylcholine receptor"
+    chain: "A"
+    
+  "2BQQ":
+    name: "Krait toxin"
+    type: "neurotoxin"
+    binding_target: "ion channel"
+    chain: "A"
+
+# ====================================
+# LOGGING & DEBUG
+# ====================================
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  
+  file:
+    enabled: true
+    path: "./results/pipeline.log"
+    max_size_mb: 100
+    backup_count: 5
+  
+  console:
+    enabled: true
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  debug:
+    verbose_output: false
+    save_intermediate_states: false
+    profile_execution: false
+
+# ====================================
+# NOTIFICATION & REPORTING
+# ====================================
+reporting:
+  # Email notifications (optional)
+  email:
+    enabled: false
+    smtp_server: "smtp.gmail.com"
+    sender: "noreply@iit.ac.in"
+    recipients: []
+    
+  # Report sections
+  include_sections:
+    - "executive_summary"
+    - "method_comparison"
+    - "top_candidates"
+    - "structural_analysis"
+    - "binding_predictions"
+    - "recommendations"
+  
+  # Format
+  html_report: true
+  json_export: true
+  pdf_export: false  # Requires reportlab
+
+# ====================================
+# VERSION & METADATA
+# ====================================
+version: "1.0.0"
+last_updated: "2024-05-05"
+project: "Antivenom Protein Design"
+institution: "IIT Kharagpur"
+author: "Anirban"
+
+# ====================================
+# EXAMPLE USAGE IN PYTHON
+# ====================================
+# 
+# import yaml
+# 
+# with open('config.yaml', 'r') as f:
+#     config = yaml.safe_load(f)
+# 
+# pipeline = AntivenemPipeline(config)
+# results = pipeline.run(pdb_id=config['pipeline']['pdb_id'])
